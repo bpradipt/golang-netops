@@ -191,6 +191,20 @@ func moveInterfaceToNamespace(srcNs netops.Namespace, destNsName string, iface s
 		return fmt.Errorf("failed to bring up link %q: %w", iface, err)
 	}
 
+	// Get existing default route in the new namespace
+	defRoutes, err := ns.GetDefaultRoute()
+	if err != nil {
+		return fmt.Errorf("failed to get default route in namespace %q: %w", ns.Path(), err)
+	}
+
+	// Delete existing default route in the new namespace
+	for _, r := range defRoutes {
+		err = ns.RouteDel(r)
+		if err != nil {
+			return fmt.Errorf("failed to delete default route %v in namespace %q: %w", r, ns.Path(), err)
+		}
+	}
+
 	// Set the default route for the network interface in the new namespace
 	err = ns.RouteAdd(route)
 	if err != nil {

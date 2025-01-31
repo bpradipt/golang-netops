@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net"
 	"net/netip"
 	"os"
@@ -31,6 +32,7 @@ type Namespace interface {
 	RedirectDel(src string) error
 	RouteAdd(route *Route) error
 	RouteDel(route *Route) error
+	GetDefaultRoute() ([]*Route, error)
 	RouteList(filters ...*Route) ([]*Route, error)
 	RuleAdd(rule *Rule) error
 	RuleDel(rule *Rule) error
@@ -549,6 +551,24 @@ func (ns *namespace) routeListFiltered(filter *Route) ([]*netlink.Route, error) 
 	}
 
 	return nlRoutes, nil
+}
+
+// Return default route if present
+func (ns *namespace) GetDefaultRoute() ([]*Route, error) {
+
+	routes, err := ns.RouteList(&Route{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get a list of routes: %w", err)
+	}
+
+	var defRoutes []*Route
+	for _, r := range routes {
+		if r.Destination.Bits() == 0 && r.Priority < math.MaxInt {
+			defRoutes = append(defRoutes, r)
+		}
+	}
+
+	return defRoutes, nil
 }
 
 // RouteList gets a list of routes on the main table
